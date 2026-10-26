@@ -371,8 +371,9 @@ function nvVac() {
   $app.innerHTML = cabNv('Vacaciones') +
     '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="sub">Días disponibles hoy</span><b style="font:700 28px \'Barlow Condensed\',sans-serif">' + (v ? numCo(v.saldo) : '—') + '</b></div>' +
     (v ? '' : '<div class="aviso">Tu saldo todavía no está cargado. Igual puedes enviar la solicitud.</div>') +
-    '<div class="fila2"><div><label for="nD">Desde</label><input type="date" id="nD" min="' + NV.vacRango.min + '" max="' + NV.vacRango.max + '"></div>' +
-    '<div><label for="nH">Hasta</label><input type="date" id="nH" min="' + NV.vacRango.min + '"></div></div>' +
+    '<div><label for="nD">Desde</label><input type="date" id="nD" min="' + NV.vacRango.min + '" max="' + NV.vacRango.max + '"></div>' +
+    '<div class="fila2"><div><label for="nN">¿Cuántos días?</label><input type="number" id="nN" min="1" max="60" inputmode="numeric" placeholder="Ej. 15"></div>' +
+    '<div><label for="nH">Hasta (incluido)</label><input type="date" id="nH" min="' + NV.vacRango.min + '"></div></div>' +
     '<div class="card" id="nRes"><p class="sub">Escoge las fechas para ver cuántos días son.</p></div>' +
     padFirma() + pieNv('Firmar y enviar');
   iniciarFirma();
@@ -389,8 +390,15 @@ function nvVac() {
       (v && n > v.saldo + 0.01 ? '<div class="aviso" style="margin-top:6px">Pides más días de los que tienes disponibles. Tu coordinador decide si te los anticipa.</div>' : '');
     return n;
   }
-  q('nD').onchange = function () { if (!q('nH').value || q('nH').value < this.value) q('nH').value = this.value; cuenta(); };
-  q('nH').onchange = cuenta;
+  function habil(d) { return new Date(d + 'T12:00:00Z').getUTCDay() !== 0 && !fest[d]; }
+  function porDias() {
+    var a = q('nD').value, n = parseInt(q('nN').value, 10); if (!a || !(n > 0)) return;
+    var d = a, k = 0, g = 0; while (g++ < 400) { if (habil(d)) { k++; if (k >= n) break; } d = sumarDias(d, 1); }
+    q('nH').value = d; cuenta();
+  }
+  q('nD').onchange = function () { if (q('nN').value) porDias(); else { if (!q('nH').value || q('nH').value < this.value) q('nH').value = this.value; q('nN').value = cuenta() || ''; } };
+  q('nN').oninput = porDias;
+  q('nH').onchange = function () { q('nN').value = cuenta() || ''; };
   enlazarPie(function () {
     if (!q('nD').value || !q('nH').value) return msgNv('Escoge desde y hasta.');
     if (q('nH').value < q('nD').value) return msgNv('La fecha final debe ser después de la inicial.');
