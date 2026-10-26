@@ -229,6 +229,7 @@ function principal() {
     '<button class="op" data-nv="COMPENSATORIO"><i style="background:#e8f1ec;color:var(--verde)">↺</i><span>Día compensatorio<small>Con tu firma</small></span></button>' +
     '<button class="op" data-nv="INCAPACIDAD"><i style="background:#fdecea;color:var(--rojo)">✚</i><span>Incapacidad<small>Adjunta la foto</small></span></button>' +
     '<button class="op" data-nv="PERMISO"><i style="background:#eef2f7;color:#2F5D8A">✎</i><span>Permiso<small>Horas o día completo</small></span></button>' +
+    '<button class="op" data-nv="VACACIONES"><i style="background:#fff6cc;color:#8a6a00">☀</i><span>Vacaciones<small>Solicitud con tu firma</small></span></button>' +
     '<button class="enlace" id="bMias">Mis novedades</button>' +
     (E.supervisor ? '<button class="enlace" id="bSup">Marcar por otra persona</button>' : '');
   if (q('fRuta')) q('fRuta').onchange = function () { RUTA = this.value; };
@@ -277,7 +278,7 @@ function sumarDias(iso, n) { var d = new Date(Date.parse(iso + 'T12:00:00Z') + n
 function fechaLarga(iso) { var d = new Date(iso + 'T12:00:00Z'), m = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + m[d.getUTCMonth()]; }
 function novedad(tipo) {
   clearInterval(timer);
-  var go = function () { ({ COMPENSATORIO: nvComp, INCAPACIDAD: nvInc, PERMISO: nvPerm, MIAS: nvMias })[tipo](); };
+  var go = function () { ({ COMPENSATORIO: nvComp, INCAPACIDAD: nvInc, PERMISO: nvPerm, VACACIONES: nvVac, MIAS: nvMias })[tipo](); };
   if (NV) return go();
   $app.innerHTML = '<div class="spin"></div><p class="mini">Cargando…</p>';
   llamar('mk_novedadInfo', DEV).then(function (r) { NV = r; go(); }).catch(function (e) { error(e.message); });
@@ -361,6 +362,41 @@ function nvInc() {
     if (!q('nF').value) return msgNv('Escoge la fecha de inicio.');
     if (!SOP) return msgNv('Adjunta la foto de la incapacidad.');
     enviarNv(this, { tipo: 'INCAPACIDAD', desde: q('nF').value, dias: dias, soporte: SOP });
+  });
+}
+
+function numCo(x) { return (Math.round(x * 10) / 10).toString().replace('.', ','); }
+function nvVac() {
+  var v = NV.vac;
+  $app.innerHTML = cabNv('Vacaciones') +
+    '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="sub">Días disponibles hoy</span><b style="font:700 28px \'Barlow Condensed\',sans-serif">' + (v ? numCo(v.saldo) : '—') + '</b></div>' +
+    (v ? '' : '<div class="aviso">Tu saldo todavía no está cargado. Igual puedes enviar la solicitud.</div>') +
+    '<div class="fila2"><div><label for="nD">Desde</label><input type="date" id="nD" min="' + NV.vacRango.min + '" max="' + NV.vacRango.max + '"></div>' +
+    '<div><label for="nH">Hasta</label><input type="date" id="nH" min="' + NV.vacRango.min + '"></div></div>' +
+    '<div class="card" id="nRes"><p class="sub">Escoge las fechas para ver cuántos días son.</p></div>' +
+    padFirma() + pieNv('Firmar y enviar');
+  iniciarFirma();
+  var fest = {}; (NV.festivos || []).forEach(function (f) { fest[f] = 1; });
+  function cuenta() {
+    var a = q('nD').value, b = q('nH').value;
+    if (a) q('nH').min = a;
+    if (!a || !b || b < a) { q('nRes').innerHTML = '<p class="sub">Escoge las fechas para ver cuántos días son.</p>'; return 0; }
+    var n = 0, fs = [];
+    for (var d = a; d <= b; d = sumarDias(d, 1)) { var dw = new Date(d + 'T12:00:00Z').getUTCDay(); if (dw === 0) continue; if (fest[d]) { fs.push(fechaLarga(d)); continue; } n++; }
+    var reg = sumarDias(b, 1), k = 0; while (!NV.jornadas[reg] && k++ < 10) reg = sumarDias(reg, 1);
+    q('nRes').innerHTML = '<b>' + n + (n === 1 ? ' día' : ' días') + ' de vacaciones</b><p class="sub">Cuentan los sábados · no cuentan domingos ni festivos' + (fs.length ? ' (' + fs.join(', ') + ')' : '') + '</p>' +
+      '<p class="sub" style="margin-top:4px">' + (v ? 'Te quedarían <b>' + numCo(v.saldo - n) + ' días</b> · ' : '') + 'regresas el ' + fechaLarga(reg) + '</p>' +
+      (v && n > v.saldo + 0.01 ? '<div class="aviso" style="margin-top:6px">Pides más días de los que tienes disponibles. Tu coordinador decide si te los anticipa.</div>' : '');
+    return n;
+  }
+  q('nD').onchange = function () { if (!q('nH').value || q('nH').value < this.value) q('nH').value = this.value; cuenta(); };
+  q('nH').onchange = cuenta;
+  enlazarPie(function () {
+    if (!q('nD').value || !q('nH').value) return msgNv('Escoge desde y hasta.');
+    if (q('nH').value < q('nD').value) return msgNv('La fecha final debe ser después de la inicial.');
+    if (!cuenta()) return msgNv('En esas fechas no hay días de vacaciones.');
+    if (!FIRMA()) return msgNv('Falta tu firma.');
+    enviarNv(this, { tipo: 'VACACIONES', desde: q('nD').value, hasta: q('nH').value, firma: FIRMA() });
   });
 }
 // Las fotos se reducen a 1600 px para que suban rápido
