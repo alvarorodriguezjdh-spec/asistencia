@@ -55,6 +55,21 @@
   .spin { width: 34px; height: 34px; border: 4px solid #cfd3cf; border-top-color: var(--asfalto); border-radius: 50%; animation: g 1s linear infinite; margin: 40px auto 10px; }
   @keyframes g { to { transform: rotate(360deg); } }
   .confirmar { display: flex; gap: 10px; } .confirmar .btn { font-size: 20px; }
+  .op { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--linea); border-radius: 10px; padding: 12px; font-weight: 600; font-size: 16px; text-align: left; width: 100%; cursor: pointer; }
+  .op i { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-style: normal; font-size: 18px; flex: none; }
+  .op small { display: block; font-weight: 400; color: var(--tenue); font-size: 12px; }
+  .firma { position: relative; background: #fff; border: 1px dashed #9aa19a; border-radius: 8px; height: 150px; touch-action: none; }
+  .firma canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+  .firma .pie { position: absolute; left: 10px; right: 10px; bottom: 6px; display: flex; justify-content: space-between; font-size: 12px; color: var(--tenue); pointer-events: none; }
+  .firma .pie button { pointer-events: auto; background: none; border: 0; color: var(--asfalto-2); text-decoration: underline; font-size: 12px; padding: 0; }
+  .fila2 { display: flex; gap: 8px; } .fila2 > div { flex: 1; }
+  .step { display: flex; align-items: center; border: 1px solid var(--linea); border-radius: 8px; background: #fff; overflow: hidden; }
+  .step b { flex: 1; text-align: center; font-size: 20px; } .step button { width: 46px; font-size: 22px; padding: 9px 0; background: #f2f3f2; border: 0; }
+  .seg { display: flex; border: 1px solid var(--linea); border-radius: 8px; overflow: hidden; } .seg button { flex: 1; border: 0; background: #fff; padding: 11px; font-size: 15px; }
+  .seg button.on { background: var(--asfalto); color: #fff; }
+  .adj { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--linea); border-radius: 8px; padding: 8px; }
+  .adj img { width: 60px; height: 72px; object-fit: cover; border-radius: 4px; background: #e9ecef; }
+  .est-PENDIENTE { color: var(--naranja); } .est-APROBADA { color: var(--verde); } .est-RECHAZADA { color: var(--rojo); }
   .oculto { display: none !important; }
 </style>
 </head>
@@ -210,6 +225,11 @@ function principal() {
   }
   $app.innerHTML = cab + tarjeta + ubi + aviso + ruta +
     '<div class="reloj"><b id="rH"></b><span class="sub" id="rAp"></span></div><div id="mMsg"></div>' + botones +
+    '<p class="sub centro" style="margin-top:8px">Registrar novedad</p>' +
+    '<button class="op" data-nv="COMPENSATORIO"><i style="background:#e8f1ec;color:var(--verde)">↺</i><span>Día compensatorio<small>Con tu firma</small></span></button>' +
+    '<button class="op" data-nv="INCAPACIDAD"><i style="background:#fdecea;color:var(--rojo)">✚</i><span>Incapacidad<small>Adjunta la foto</small></span></button>' +
+    '<button class="op" data-nv="PERMISO"><i style="background:#eef2f7;color:#2F5D8A">✎</i><span>Permiso<small>Horas o día completo</small></span></button>' +
+    '<button class="enlace" id="bMias">Mis novedades</button>' +
     (E.supervisor ? '<button class="enlace" id="bSup">Marcar por otra persona</button>' : '');
   if (q('fRuta')) q('fRuta').onchange = function () { RUTA = this.value; };
   Array.prototype.forEach.call($app.querySelectorAll('[data-a]'), function (b) { b.onclick = function () { accion(b.dataset.a, b); }; });
@@ -217,6 +237,8 @@ function principal() {
   if (q('bNo')) q('bNo').onclick = function () { pidiendoSalida = false; principal(); };
   if (q('bSi')) q('bSi').onclick = function () { pidiendoSalida = false; enviar('SALIDA', this); };
   if (q('bSup')) q('bSup').onclick = supervisor;
+  Array.prototype.forEach.call($app.querySelectorAll('[data-nv]'), function (b) { b.onclick = function () { novedad(b.dataset.nv); }; });
+  if (q('bMias')) q('bMias').onclick = function () { novedad('MIAS'); };
   tic(); clearInterval(timer); timer = setInterval(tic, 15000);
 }
 function accion(a, b) {
@@ -244,6 +266,143 @@ function confirmacion(r) {
     '<div style="flex:1"></div><button class="btn b-bl b-peq" id="bListo">Listo</button><p class="mini">Vuelve sola al inicio en 10 segundos</p>';
   var fin = function () { clearTimeout(volver); r.confirmacion = null; mostrar(r); };
   q('bListo').onclick = fin; clearTimeout(volver); volver = setTimeout(fin, 10000);
+}
+
+
+/* ---- novedades ---- */
+var NV = null, FIRMA = null;
+var NOM_NV = { COMPENSATORIO: 'Día compensatorio', INCAPACIDAD: 'Incapacidad', PERMISO: 'Permiso' };
+function isoHoy() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function sumarDias(iso, n) { var d = new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5); return d.toISOString().slice(0, 10); }
+function fechaLarga(iso) { var d = new Date(iso + 'T12:00:00Z'), m = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + m[d.getUTCMonth()]; }
+function novedad(tipo) {
+  clearInterval(timer);
+  var go = function () { ({ COMPENSATORIO: nvComp, INCAPACIDAD: nvInc, PERMISO: nvPerm, MIAS: nvMias })[tipo](); };
+  if (NV) return go();
+  $app.innerHTML = '<div class="spin"></div><p class="mini">Cargando…</p>';
+  llamar('mk_novedadInfo', DEV).then(function (r) { NV = r; go(); }).catch(function (e) { error(e.message); });
+}
+function cabNv(t) { return '<div><h1 class="hola">' + t + '</h1><p class="sub">' + esc(cap(NV.nombre)) + ' · ' + esc(cap(NV.area)) + '</p></div>'; }
+function pieNv(txtBtn) { return '<div id="nMsg"></div><div style="flex:1"></div><button class="btn b-am" id="nEnviar">' + txtBtn + '</button><button class="enlace" id="nVolver">Volver</button>'; }
+function enlazarPie(fn) { q('nVolver').onclick = function () { cargar(); }; q('nEnviar').onclick = fn; }
+function msgNv(t) { q('nMsg').innerHTML = t ? '<div class="alerta">' + esc(t) + '</div>' : ''; }
+function padFirma() {
+  return '<div><label>Tu firma</label><div class="firma"><canvas id="cFirma"></canvas><div class="pie"><span>Firma aquí con el dedo</span><button type="button" id="bBorrar">Borrar</button></div></div></div>';
+}
+function iniciarFirma() {
+  var c = q('cFirma'), r = c.getBoundingClientRect(), k = window.devicePixelRatio || 1, ctx, dib = false, hay = false, ult = null;
+  c.width = r.width * k; c.height = r.height * k; ctx = c.getContext('2d'); ctx.scale(k, k);
+  ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1d2a6b';
+  function pos(e) { var b = c.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; }
+  c.onpointerdown = function (e) { dib = true; hay = true; ult = pos(e); c.setPointerCapture(e.pointerId); e.preventDefault(); };
+  c.onpointermove = function (e) { if (!dib) return; var p = pos(e); ctx.beginPath(); ctx.moveTo(ult.x, ult.y); ctx.lineTo(p.x, p.y); ctx.stroke(); ult = p; e.preventDefault(); };
+  c.onpointerup = c.onpointercancel = function () { dib = false; };
+  q('bBorrar').onclick = function () { ctx.clearRect(0, 0, c.width, c.height); hay = false; };
+  FIRMA = function () { return hay ? c.toDataURL('image/png') : ''; };
+}
+function nvComp() {
+  $app.innerHTML = cabNv('Día compensatorio') +
+    '<div><label for="nF">¿Qué día descansas?</label><input type="date" id="nF" min="' + NV.comp.min + '" max="' + NV.comp.max + '"></div>' +
+    '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="sub">Horas de tu jornada ese día</span><b id="nH" style="font:700 24px \'Barlow Condensed\',sans-serif">—</b></div>' +
+    padFirma() + '<p class="mini" style="text-align:left">Al firmar confirmas que tomas este día como compensatorio por horas extra trabajadas.</p>' + pieNv('Firmar y enviar');
+  iniciarFirma();
+  q('nF').onchange = function () { var j = NV.jornadas[this.value]; q('nH').textContent = !this.value ? '—' : j ? hm(j) + ' h' : 'Sin jornada'; msgNv(this.value && !j ? 'Ese día no tienes jornada (domingo, festivo o día sin horario).' : ''); };
+  enlazarPie(function () {
+    var f = q('nF').value;
+    if (!f) return msgNv('Escoge el día.');
+    if (!NV.jornadas[f]) return msgNv('Ese día no tienes jornada.');
+    if (!FIRMA()) return msgNv('Falta tu firma.');
+    enviarNv(this, { tipo: 'COMPENSATORIO', fecha: f, firma: FIRMA() });
+  });
+}
+function nvPerm() {
+  $app.innerHTML = cabNv('Permiso') +
+    '<div><label for="nF">Día del permiso</label><input type="date" id="nF" min="' + NV.perm.min + '" max="' + NV.perm.max + '"></div>' +
+    '<div><label for="nMot">Motivo</label><select id="nMot"><option value="">Escoge…</option>' + NV.motivos.map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('') + '</select></div>' +
+    '<div class="seg" id="nSeg"><button type="button" class="on" data-c="1">Día completo</button><button type="button" data-c="0">Por horas</button></div>' +
+    '<div id="nHorasC" class="oculto"><label for="nHoras">¿Cuántas horas?</label><input id="nHoras" type="number" inputmode="decimal" min="0.5" step="0.5" placeholder="Ej. 2"></div>' +
+    padFirma() + pieNv('Firmar y enviar');
+  iniciarFirma();
+  var completo = true;
+  Array.prototype.forEach.call(q('nSeg').children, function (b) { b.onclick = function () { completo = b.dataset.c === '1'; Array.prototype.forEach.call(q('nSeg').children, function (x) { x.className = x === b ? 'on' : ''; }); q('nHorasC').className = completo ? 'oculto' : ''; }; });
+  enlazarPie(function () {
+    var f = q('nF').value;
+    if (!f) return msgNv('Escoge el día.');
+    if (!NV.jornadas[f]) return msgNv('Ese día no tienes jornada.');
+    if (!q('nMot').value) return msgNv('Escoge el motivo.');
+    if (!completo && !(parseFloat(q('nHoras').value) > 0)) return msgNv('Escribe cuántas horas.');
+    if (!FIRMA()) return msgNv('Falta tu firma.');
+    enviarNv(this, { tipo: 'PERMISO', fecha: f, motivo: q('nMot').value, diaCompleto: completo, horas: q('nHoras').value, firma: FIRMA() });
+  });
+}
+function nvInc() {
+  var dias = 1, SOP = null;
+  $app.innerHTML = cabNv('Incapacidad') +
+    '<div class="fila2"><div><label for="nF">Desde</label><input type="date" id="nF" min="' + NV.inc.min + '" max="' + NV.inc.max + '" value="' + isoHoy() + '"></div>' +
+    '<div><label>Días</label><div class="step"><button type="button" id="nMenos">−</button><b id="nDias">1</b><button type="button" id="nMas">+</button></div></div></div>' +
+    '<div class="card" id="nCubre"></div>' +
+    '<div><label>Foto o PDF de la incapacidad</label><input type="file" id="nArch" accept="image/*,application/pdf" style="font-size:15px;padding:10px"></div><div id="nPrev"></div>' +
+    pieNv('Enviar');
+  function cubre() {
+    var f = q('nF').value; if (!f) { q('nCubre').innerHTML = ''; return; }
+    var hab = [], min = 0;
+    for (var i = 0; i < dias; i++) { var d = sumarDias(f, i), j = NV.jornadas[d]; if (j) { hab.push(fechaLarga(d)); min += j; } }
+    q('nCubre').innerHTML = '<p class="sub">Del ' + fechaLarga(f) + ' al ' + fechaLarga(sumarDias(f, dias - 1)) + '</p><b>' + hab.length + (hab.length === 1 ? ' día' : ' días') + ' de trabajo · ' + hm(min) + ' h de jornada</b>' + (hab.length && hab.length <= 6 ? '<p class="sub">' + hab.join(', ') + '</p>' : '');
+  }
+  q('nMenos').onclick = function () { dias = Math.max(1, dias - 1); q('nDias').textContent = dias; cubre(); };
+  q('nMas').onclick = function () { dias = Math.min(180, dias + 1); q('nDias').textContent = dias; cubre(); };
+  q('nF').onchange = cubre; cubre();
+  q('nArch').onchange = function () {
+    var f = this.files[0]; SOP = null; q('nPrev').innerHTML = ''; if (!f) return;
+    leerArchivo(f).then(function (s) { SOP = s; q('nPrev').innerHTML = '<div class="adj">' + (/^data:image/.test(s.data) ? '<img src="' + s.data + '">' : '<span style="font-size:28px">📄</span>') + '<div><b>' + esc(s.nombre) + '</b><p class="sub">' + Math.round(s.data.length * 0.75 / 1024) + ' KB</p></div></div>'; })
+      .catch(function (e) { msgNv(e.message); });
+  };
+  enlazarPie(function () {
+    if (!q('nF').value) return msgNv('Escoge la fecha de inicio.');
+    if (!SOP) return msgNv('Adjunta la foto de la incapacidad.');
+    enviarNv(this, { tipo: 'INCAPACIDAD', desde: q('nF').value, dias: dias, soporte: SOP });
+  });
+}
+// Las fotos se reducen a 1600 px para que suban rápido
+function leerArchivo(f) {
+  return new Promise(function (ok, mal) {
+    var r = new FileReader();
+    r.onerror = function () { mal(new Error('No se pudo leer el archivo')); };
+    r.onload = function () {
+      var url = r.result;
+      if (!/^data:image/.test(url)) { if (url.length > 8e6) return mal(new Error('El archivo es muy pesado (máx. 6 MB).')); return ok({ data: url, nombre: f.name }); }
+      var im = new Image();
+      im.onload = function () {
+        var k = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        ok({ data: c.toDataURL('image/jpeg', 0.75), nombre: f.name.replace(/\.[^.]+$/, '') + '.jpg' });
+      };
+      im.onerror = function () { ok({ data: url, nombre: f.name }); };
+      im.src = url;
+    };
+    r.readAsDataURL(f);
+  });
+}
+function enviarNv(b, datos) {
+  b.disabled = true; b.textContent = 'Enviando…'; msgNv('');
+  llamar('mk_crearSolicitud', DEV, datos).then(function (r) {
+    NV.mias = r.mias;
+    $app.innerHTML = '<div class="centro"><div class="ok" style="background:var(--naranja)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h1 class="hola">Enviado</h1><p class="sub" style="margin-top:6px">' + esc(r.msg) + '</p></div>' +
+      tablaMias() + '<div style="flex:1"></div><button class="btn b-bl b-peq" id="nListo">Volver</button>';
+    q('nListo').onclick = function () { cargar(); };
+  }).catch(function (e) { b.disabled = false; b.textContent = 'Enviar'; msgNv(e.message); });
+}
+function tablaMias() {
+  if (!NV.mias || !NV.mias.length) return '<p class="mini">Todavía no tienes novedades registradas.</p>';
+  return '<div class="card"><p class="sub">Mis novedades</p><table class="res">' + NV.mias.map(function (m) {
+    var f = m.desde === m.hasta ? fechaLarga(m.desde) : fechaLarga(m.desde) + ' – ' + fechaLarga(m.hasta);
+    return '<tr><td>' + esc(cap(m.tipo)) + ' · ' + f + '</td><td class="est-' + m.estado + '">' + esc(cap(m.estado)) + '</td></tr>';
+  }).join('') + '</table></div>';
+}
+function nvMias() {
+  $app.innerHTML = '<div><h1 class="hola">Mis novedades</h1></div>' + tablaMias() + '<div style="flex:1"></div><button class="btn b-bl b-peq" id="nListo">Volver</button>';
+  q('nListo').onclick = function () { cargar(); };
 }
 
 /* ---- supervisor ---- */
@@ -280,7 +439,7 @@ function botSup() {
   });
 }
 
-document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && E && E.registrado && !E.confirmacion && !q('sPer')) cargar(); });
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && E && E.registrado && !E.confirmacion && !q('sPer') && !q('nEnviar') && !q('nListo')) cargar(); });
 if (API.indexOf('/exec') < 0) $app.innerHTML = '<div class="alerta">Falta pegar el link de la app en la línea var API de este archivo.</div>'; else cargar();
 </script>
 </body>
