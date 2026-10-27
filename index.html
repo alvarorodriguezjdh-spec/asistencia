@@ -70,6 +70,7 @@
   .adj { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--linea); border-radius: 8px; padding: 8px; }
   .adj img { width: 60px; height: 72px; object-fit: cover; border-radius: 4px; background: #e9ecef; }
   .est-PENDIENTE { color: var(--naranja); } .est-APROBADA { color: var(--verde); } .est-RECHAZADA { color: var(--rojo); }
+  .ban { border-radius: 8px; padding: 9px 11px; font-size: 14px; } .ban.si { background: #e8f1ec; border: 1px solid #b9d8c4; color: #1f5a38; } .ban.no { background: #fdecea; border: 1px solid #f1b7b1; color: #8b241c; }
   .oculto { display: none !important; }
 </style>
 </head>
@@ -211,6 +212,11 @@ function principal() {
       : '<div class="card estado"><p class="sub">Estado</p><div class="e">Fuera de turno</div>' + (E.ultimaSalida ? '<p class="sub">Última salida: ' + esc(E.ultimaSalida) + '</p>' : '') + '</div>';
   var ubi = '<div class="card ubi"><span class="pt ' + u.cls + '"></span><span>' + u.txt + '</span></div>' + (u.err ? '<div class="alerta">' + u.err + '</div>' : '');
   var aviso = E.aviso ? '<div class="aviso">' + esc(E.aviso) + '</div>' : '';
+  var EST_AV = { APROBADA: 'aprobado', RECHAZADA: 'rechazado' };
+  aviso = (E.avisosNv || []).map(function (x) {
+    var f = x.desde === x.hasta ? 'del ' + fechaLarga(x.desde) : 'del ' + fechaLarga(x.desde) + ' al ' + fechaLarga(x.hasta);
+    return '<div class="ban ' + (x.estado === 'APROBADA' ? 'si' : 'no') + '">' + (x.estado === 'APROBADA' ? '✓' : '✗') + ' Tu <b>' + esc(x.tipo === 'COMPENSATORIO' ? 'día compensatorio' : x.tipo.toLowerCase()) + ' ' + f + (x.franja ? ' (' + esc(x.franja.replace('-', '–')) + ')' : '') + '</b> fue <b>' + EST_AV[x.estado] + '</b> por ' + esc(cap(x.por || '')) + (x.nota ? ': "' + esc(x.nota) + '"' : '') + '.</div>';
+  }).join('') + aviso;
   var ruta = '';
   if (E.rutas && E.rutas.length && E.botones.indexOf('ENTRADA') >= 0) {
     ruta = '<div><label for="fRuta">Ruta de hoy</label><select id="fRuta"><option value="">Escoge la ruta…</option>' +
@@ -319,21 +325,32 @@ function nvComp() {
 function nvPerm() {
   $app.innerHTML = cabNv('Permiso') +
     '<div><label for="nF">Día del permiso</label><input type="date" id="nF" min="' + NV.perm.min + '" max="' + NV.perm.max + '"></div>' +
-    '<div><label for="nMot">Motivo</label><select id="nMot"><option value="">Escoge…</option>' + NV.motivos.map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('') + '</select></div>' +
-    '<div class="seg" id="nSeg"><button type="button" class="on" data-c="1">Día completo</button><button type="button" data-c="0">Por horas</button></div>' +
-    '<div id="nHorasC" class="oculto"><label for="nHoras">¿Cuántas horas?</label><input id="nHoras" type="number" inputmode="decimal" min="0.5" step="0.5" placeholder="Ej. 2"></div>' +
+    '<div class="seg" id="nSeg"><button type="button" class="on" data-c="0">Por horas</button><button type="button" data-c="1">Todo el día</button></div>' +
+    '<div class="fila2" id="nHorasC"><div><label for="nDe">Desde</label><input type="time" id="nDe"></div><div><label for="nA">Hasta</label><input type="time" id="nA"></div></div>' +
+    '<div class="card" id="nRes"><p class="sub">No marques salida ni entrada por el permiso: el sistema descuenta esa franja de tu turno. Si no vuelves, marca salida.</p></div>' +
+    '<div><label for="nMot">Tipo de permiso</label><select id="nMot"><option value="">Escoge…</option>' + NV.motivos.map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('') + '</select></div>' +
+    '<div><label for="nDesc">¿Para qué es el permiso?</label><textarea id="nDesc" rows="2" maxlength="300" style="width:100%;border:1px solid var(--linea);border-radius:8px;padding:10px;font:inherit;font-size:16px" placeholder="Ej. control médico en la EPS"></textarea></div>' +
     padFirma() + pieNv('Firmar y enviar');
   iniciarFirma();
-  var completo = true;
-  Array.prototype.forEach.call(q('nSeg').children, function (b) { b.onclick = function () { completo = b.dataset.c === '1'; Array.prototype.forEach.call(q('nSeg').children, function (x) { x.className = x === b ? 'on' : ''; }); q('nHorasC').className = completo ? 'oculto' : ''; }; });
+  var completo = false;
+  function horas() {
+    var a = q('nDe').value, b = q('nA').value;
+    if (completo) { var j = NV.jornadas[q('nF').value]; q('nRes').innerHTML = '<b>' + (j ? hm(j) + ' h (tu jornada de ese día)' : 'Todo el día') + '</b>'; return; }
+    if (!a || !b) { q('nRes').innerHTML = '<p class="sub">No marques salida ni entrada por el permiso: el sistema descuenta esa franja de tu turno. Si no vuelves, marca salida.</p>'; return; }
+    var m = (parseInt(b) * 60 + parseInt(b.slice(3))) - (parseInt(a) * 60 + parseInt(a.slice(3))); if (m <= 0) m += 1440;
+    q('nRes').innerHTML = '<b>' + hm(m) + ' h de permiso</b><p class="sub">No marques salida ni entrada por el permiso: el sistema descuenta esa franja. Si no vuelves, marca salida.</p>';
+  }
+  Array.prototype.forEach.call(q('nSeg').children, function (b) { b.onclick = function () { completo = b.dataset.c === '1'; Array.prototype.forEach.call(q('nSeg').children, function (x) { x.className = x === b ? 'on' : ''; }); q('nHorasC').className = completo ? 'fila2 oculto' : 'fila2'; horas(); }; });
+  q('nDe').onchange = horas; q('nA').onchange = horas; q('nF').onchange = horas;
   enlazarPie(function () {
     var f = q('nF').value;
     if (!f) return msgNv('Escoge el día.');
     if (!NV.jornadas[f]) return msgNv('Ese día no tienes jornada.');
-    if (!q('nMot').value) return msgNv('Escoge el motivo.');
-    if (!completo && !(parseFloat(q('nHoras').value) > 0)) return msgNv('Escribe cuántas horas.');
+    if (!completo && (!q('nDe').value || !q('nA').value)) return msgNv('Escribe desde qué hora y hasta qué hora.');
+    if (!q('nMot').value) return msgNv('Escoge el tipo de permiso.');
+    if (q('nDesc').value.trim().length < 3) return msgNv('Escribe para qué es el permiso.');
     if (!FIRMA()) return msgNv('Falta tu firma.');
-    enviarNv(this, { tipo: 'PERMISO', fecha: f, motivo: q('nMot').value, diaCompleto: completo, horas: q('nHoras').value, firma: FIRMA() });
+    enviarNv(this, { tipo: 'PERMISO', fecha: f, motivo: q('nMot').value, descripcion: q('nDesc').value.trim(), diaCompleto: completo, horaDesde: q('nDe').value, horaHasta: q('nA').value, firma: FIRMA() });
   });
 }
 function nvInc() {
@@ -439,9 +456,15 @@ function enviarNv(b, datos) {
 }
 function tablaMias() {
   if (!NV.mias || !NV.mias.length) return '<p class="mini">Todavía no tienes novedades registradas.</p>';
+  var EST = { PENDIENTE: 'Pendiente', APROBADA: 'Aprobado', RECHAZADA: 'Rechazado' };
   return '<div class="card"><p class="sub">Mis novedades</p><table class="res">' + NV.mias.map(function (m) {
     var f = m.desde === m.hasta ? fechaLarga(m.desde) : fechaLarga(m.desde) + ' – ' + fechaLarga(m.hasta);
-    return '<tr><td>' + esc(cap(m.tipo)) + ' · ' + f + '</td><td class="est-' + m.estado + '">' + esc(cap(m.estado)) + '</td></tr>';
+    var det = [];
+    if (m.franja) det.push(m.franja.replace('-', '–'));
+    if (m.tipo === 'VACACIONES') det.push(m.dias + ' días'); else if (m.horas) det.push(String(m.horas).replace('.', ',') + ' h');
+    if (m.motivo) det.push(m.motivo);
+    var dec = m.estado === 'APROBADA' ? 'Aprobó ' + cap(m.por || '') + (m.trat && m.tipo === 'PERMISO' ? ' · ' + cap(m.trat) : '') : m.estado === 'RECHAZADA' ? 'Rechazó ' + cap(m.por || '') + (m.nota ? ': "' + m.nota + '"' : '') : '';
+    return '<tr><td style="text-align:left"><b>' + esc(cap(m.tipo)) + ' · ' + f + '</b><div class="sub">' + esc(det.join(' · ')) + '</div>' + (dec ? '<div class="sub">' + esc(dec) + '</div>' : '') + '</td><td class="est-' + m.estado + '" style="vertical-align:top">' + (EST[m.estado] || cap(m.estado)) + '</td></tr>';
   }).join('') + '</table></div>';
 }
 function nvMias() {
