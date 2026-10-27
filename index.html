@@ -124,7 +124,7 @@ function pedirUbicacion(cb) {
   }, function (err) {
     POS_ERR = err.code === 1 ? 'Diste "no permitir" a la ubicación. Actívala en la configuración del navegador para este sitio.' : 'No pudimos leer tu ubicación. Revisa que el GPS esté encendido.';
     cb && cb();
-  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 20000 });
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
 }
 function distancia(a, b, c, d) {
   var R = 6371000, r = Math.PI / 180, x = (c - a) * r, y = (d - b) * r;
@@ -155,7 +155,7 @@ function tic() {
     q('dBarra').style.background = l > p ? 'var(--rojo)' : 'var(--naranja)';
     var falta = p - l;
     q('dAviso').className = falta < 0 ? 'alerta' : 'aviso';
-    q('dAviso').textContent = falta < 0 ? 'Te pasaste ' + hm(-falta) + ' del almuerzo.' : 'Te quedan ' + Math.ceil(falta) + ' minutos de almuerzo.';
+    q('dAviso').textContent = falta < -30 ? 'Llevas mucho más del descanso. ¿Olvidaste marcar el regreso?' : falta < 0 ? 'Te pasaste ' + hm(-falta) + ' del descanso.' : 'Te quedan ' + Math.ceil(falta) + ' minutos de descanso.';
   }
   if (E && E.estado === 'TRABAJANDO' && q('tLleva')) q('tLleva').textContent = hm(minutosDesde());
 }
@@ -171,7 +171,7 @@ function mostrar(r) {
   if (r.confirmacion) return confirmacion(r);
   if (!r.registrado) return r.pendiente ? pendiente(r) : registro(r);
   principal();
-  pedirUbicacion(principal);
+  if (!POS || Date.now() - POS.t > 60000) pedirUbicacion(principal);
 }
 function error(msg) {
   $app.innerHTML = '<div class="alerta">' + esc(msg) + '</div><button class="btn b-bl b-peq" onclick="cargar()">Intentar de nuevo</button>';
@@ -198,7 +198,7 @@ function pendiente(r) {
     '<div class="aviso">' + (r.nombre ? esc(cap(r.nombre)) + ', ya' : 'Ya') + ' tienes otro celular registrado. Tu coordinador debe aprobar este nuevo celular. Cuando lo apruebe, vuelve a abrir este link.</div>' +
     '<div style="flex:1"></div><button class="btn b-bl b-peq" onclick="cargar()">Ya me aprobaron</button>';
 }
-var ETQ = { 'ENTRADA': 'Marcar entrada', 'SALIDA': 'Marcar salida', 'INICIO DESCANSO': 'Salir a almorzar', 'FIN DESCANSO': 'Volver del almuerzo' };
+var ETQ = { 'ENTRADA': 'Marcar entrada', 'SALIDA': 'Marcar salida', 'INICIO DESCANSO': 'Salir a descanso', 'FIN DESCANSO': 'Volver del descanso' };
 var CLS = { 'ENTRADA': 'b-am', 'SALIDA': 'b-os', 'INICIO DESCANSO': 'b-bl', 'FIN DESCANSO': 'b-am' };
 function principal() {
   if (!E || !E.registrado || E.confirmacion) return;
@@ -207,7 +207,7 @@ function principal() {
   var tarjeta = est === 'TRABAJANDO'
     ? '<div class="card estado trab"><p class="sub">Estado</p><div class="e">Trabajando</div><p class="sub">Desde ' + esc(E.desde) + ' · lleva <span id="tLleva"></span> h</p></div>'
     : est === 'DESCANSO'
-      ? '<div class="card estado desc"><p class="sub">Estado</p><div class="e">En almuerzo</div><p class="sub">Desde ' + esc(E.desde) + ' · lleva <b id="dLleva"></b> de ' + hm(E.descPactado || 66) + '</p><div class="barra"><i id="dBarra"></i></div></div><div id="dAviso" class="aviso"></div>'
+      ? '<div class="card estado desc"><p class="sub">Estado</p><div class="e">En descanso</div><p class="sub">Desde ' + esc(E.desde) + ' · lleva <b id="dLleva"></b> de ' + hm(E.descPactado || 66) + '</p><div class="barra"><i id="dBarra"></i></div></div><div id="dAviso" class="aviso"></div>'
       : '<div class="card estado"><p class="sub">Estado</p><div class="e">Fuera de turno</div>' + (E.ultimaSalida ? '<p class="sub">Última salida: ' + esc(E.ultimaSalida) + '</p>' : '') + '</div>';
   var ubi = '<div class="card ubi"><span class="pt ' + u.cls + '"></span><span>' + u.txt + '</span></div>' + (u.err ? '<div class="alerta">' + u.err + '</div>' : '');
   var aviso = E.aviso ? '<div class="aviso">' + esc(E.aviso) + '</div>' : '';
@@ -218,9 +218,9 @@ function principal() {
   }
   var botones;
   if (pidiendoSalida) {
-    botones = '<div class="aviso">¿Seguro que vas a <b>terminar tu turno</b>?</div><div class="confirmar"><button class="btn b-bl" id="bNo">No</button><button class="btn b-os" id="bSi">Sí, salida</button></div>';
+    botones = '<div class="aviso">¿Seguro que vas a <b>terminar tu turno</b>?' + (E.estado === 'DESCANSO' ? '<br>Se tomará tu descanso pactado (' + hm(E.descPactado || 66) + ') desde las ' + esc(E.desde) + '.' : '') + '</div><div class="confirmar"><button class="btn b-bl" id="bNo">No</button><button class="btn b-os" id="bSi">Sí, salida</button></div>';
   } else {
-    botones = E.botones.map(function (a) { return '<button class="btn ' + CLS[a] + '" data-a="' + a + '"' + (u.puede ? '' : ' disabled') + '>' + ETQ[a] + '</button>'; }).join('');
+    botones = E.botones.map(function (a) { var olv = a === 'SALIDA' && E.estado === 'DESCANSO'; return '<button class="btn ' + CLS[a] + (olv ? ' b-peq' : '') + '" data-a="' + a + '"' + (u.puede ? '' : ' disabled') + '>' + (olv ? 'Olvidé marcar el regreso · marcar salida' : ETQ[a]) + '</button>'; }).join('');
     if (!u.puede || (!POS && E.modo !== 'LIBRE')) botones += '<button class="btn b-bl b-peq" id="bUbi">Actualizar ubicación</button>';
   }
   $app.innerHTML = cab + tarjeta + ubi + aviso + ruta +
@@ -257,7 +257,7 @@ function enviar(a, b) {
     }).catch(function (e) { principal(); q('mMsg').innerHTML = '<div class="alerta">' + esc(e.message) + '</div>'; });
   };
   // ubicación fresca (máx. 1 minuto)
-  if (!POS || Date.now() - POS.t > 60000) pedirUbicacion(go); else go();
+  if (!POS || Date.now() - POS.t > 180000) pedirUbicacion(go); else go();
 }
 function confirmacion(r) {
   var c = r.confirmacion;
@@ -456,7 +456,7 @@ function supervisor() {
   $app.innerHTML = '<div class="spin"></div><p class="mini">Cargando personal…</p>';
   llamar('mk_listaPersonal', DEV).then(function (r) { SUP = r; pintarSup(); }).catch(function (e) { error(e.message); });
 }
-var NOM_EST = { FUERA: 'Fuera de turno', TRABAJANDO: 'Trabajando', DESCANSO: 'En almuerzo' };
+var NOM_EST = { FUERA: 'Fuera de turno', TRABAJANDO: 'Trabajando', DESCANSO: 'En descanso' };
 function pintarSup(msg) {
   var sel = q('sPer') ? q('sPer').value : '';
   $app.innerHTML = '<div><h1 class="hola">Marcar por otra persona</h1><p class="sub">Queda como marcación manual y aparece en Alertas.</p></div>' + (msg || '') +
@@ -484,6 +484,7 @@ function botSup() {
 }
 
 document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && E && E.registrado && !E.confirmacion && !q('sPer') && !q('nEnviar') && !q('nListo')) cargar(); });
+pedirUbicacion(function () { if (E && E.registrado && !E.confirmacion && !q('nEnviar') && !q('sPer')) principal(); });
 if (API.indexOf('/exec') < 0) $app.innerHTML = '<div class="alerta">Falta pegar el link de la app en la línea var API de este archivo.</div>'; else cargar();
 </script>
 </body>
