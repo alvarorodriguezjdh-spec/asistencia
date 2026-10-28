@@ -62,7 +62,12 @@
   .firma canvas { width: 100%; height: 100%; display: block; touch-action: none; }
   .firma .pie { position: absolute; left: 10px; right: 10px; bottom: 6px; display: flex; justify-content: space-between; font-size: 12px; color: var(--tenue); pointer-events: none; }
   .firma .pie button { pointer-events: auto; background: none; border: 0; color: var(--asfalto-2); text-decoration: underline; font-size: 12px; padding: 0; }
-  .fila2 { display: flex; gap: 8px; } .fila2 > div { flex: 1; }
+  .fila2 { display: flex; gap: 8px; } .fila2 > div { flex: 1 1 0; min-width: 0; }
+  /* iPhone: los campos de fecha y hora tienen ancho propio y se montan sobre el de al lado */
+  input[type=date], input[type=time] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; width: 100%; min-height: 52px; line-height: 1.2; text-align: left; }
+  input::-webkit-date-and-time-value { text-align: left; margin: 0; }
+  .step { min-width: 0; } .step b { min-width: 0; }
+  .provisional .btn { opacity: .55; pointer-events: none; }
   .step { display: flex; align-items: center; border: 1px solid var(--linea); border-radius: 8px; background: #fff; overflow: hidden; }
   .step b { flex: 1; text-align: center; font-size: 20px; } .step button { width: 46px; font-size: 22px; padding: 9px 0; background: #f2f3f2; border: 0; }
   .seg { display: flex; border: 1px solid var(--linea); border-radius: 8px; overflow: hidden; } .seg button { flex: 1; border: 0; background: #fff; padding: 11px; font-size: 15px; }
@@ -162,16 +167,34 @@ function tic() {
 }
 
 /* ---- pantallas ---- */
+// Al abrir se muestra al instante lo último que se vio (con los botones apagados) mientras llega lo actual
+function guardaLocal(k, v) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), v: v })); } catch (e) { } }
+function leeLocal(k, maxMin) { try { var x = JSON.parse(localStorage.getItem(k) || 'null'); return x && Date.now() - x.t < maxMin * 60000 ? x.v : null; } catch (e) { return null; } }
 function cargar() {
-  $app.innerHTML = '<div class="spin"></div><p class="mini">Cargando…</p>';
-  llamar('mk_estado', DEV).then(mostrar).catch(function (e) { error(e.message); });
+  var prev = leeLocal('asis_estado', 12 * 60);
+  if (prev && prev.registrado && !prev.confirmacion) {
+    E = prev; principal(); $app.classList.add('provisional');
+  } else $app.innerHTML = '<div class="spin"></div><p class="mini">Cargando…</p>';
+  llamar('mk_estado', DEV).then(function (r) {
+    var sigueAqui = !!q('rH') || !!$app.querySelector('.spin') || !r.registrado;
+    $app.classList.remove('provisional');
+    if (sigueAqui) mostrar(r); else E = r; // si ya abrió una novedad, no se le cambia la pantalla
+  }).catch(function (e) { $app.classList.remove('provisional'); if (!!q('rH') || !!$app.querySelector('.spin')) error(e.message); });
+}
+// Trae por detrás lo que necesitan las novedades, para que abrirlas sea instantáneo
+function precargarNv() {
+  if (precargarNv.va) return; precargarNv.va = true;
+  precargarNv.p = llamar('mk_novedadInfo', DEV).then(function (r) { NV = r; guardaLocal('asis_nv_' + DEV, r); precargarNv.va = false; return r; }, function (e) { precargarNv.va = false; throw e; });
+  precargarNv.p.catch(function () { });
 }
 function mostrar(r) {
   T0 = Date.now(); E = r; pidiendoSalida = false;
   if (r.hoy) q('tFecha').textContent = r.hoy;
   if (r.confirmacion) return confirmacion(r);
   if (!r.registrado) return r.pendiente ? pendiente(r) : registro(r);
+  var g = {}; for (var k in r) if (k !== 'confirmacion') g[k] = r[k]; guardaLocal('asis_estado', g);
   principal();
+  if (!NV) { NV = leeLocal('asis_nv_' + DEV, 60); } precargarNv();
   if (!POS || Date.now() - POS.t > 60000) pedirUbicacion(principal);
 }
 function error(msg) {
@@ -283,11 +306,11 @@ function isoHoy() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d
 function sumarDias(iso, n) { var d = new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5); return d.toISOString().slice(0, 10); }
 function fechaLarga(iso) { var d = new Date(iso + 'T12:00:00Z'), m = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + m[d.getUTCMonth()]; }
 function novedad(tipo) {
-  clearInterval(timer);
+  clearInterval(timer); $app.classList.remove('provisional');
   var go = function () { ({ COMPENSATORIO: nvComp, INCAPACIDAD: nvInc, PERMISO: nvPerm, VACACIONES: nvVac, MIAS: nvMias })[tipo](); };
   if (NV) return go();
   $app.innerHTML = '<div class="spin"></div><p class="mini">Cargando…</p>';
-  llamar('mk_novedadInfo', DEV).then(function (r) { NV = r; go(); }).catch(function (e) { error(e.message); });
+  (precargarNv.va && precargarNv.p ? precargarNv.p : llamar('mk_novedadInfo', DEV)).then(function (r) { NV = r; go(); }).catch(function (e) { error(e.message); });
 }
 function cabNv(t) { return '<div><h1 class="hola">' + t + '</h1><p class="sub">' + esc(cap(NV.nombre)) + ' · ' + esc(cap(NV.area)) + '</p></div>'; }
 function pieNv(txtBtn) { return '<div id="nMsg"></div><div style="flex:1"></div><button class="btn b-am" id="nEnviar">' + txtBtn + '</button><button class="enlace" id="nVolver">Volver</button>'; }
@@ -324,7 +347,7 @@ function nvComp() {
 }
 function nvPerm() {
   $app.innerHTML = cabNv('Permiso') +
-    '<div><label for="nF">Día del permiso</label><input type="date" id="nF" min="' + NV.perm.min + '" max="' + NV.perm.max + '"></div>' +
+    '<div><label for="nF">Día del permiso</label><input type="date" id="nF" min="' + NV.perm.min + '" max="' + NV.perm.max + '"' + (isoHoy() >= NV.perm.min && isoHoy() <= NV.perm.max ? ' value="' + isoHoy() + '"' : '') + '></div>' +
     '<div class="seg" id="nSeg"><button type="button" class="on" data-c="0">Por horas</button><button type="button" data-c="1">Todo el día</button></div>' +
     '<div class="fila2" id="nHorasC"><div><label for="nDe">Desde</label><input type="time" id="nDe"></div><div><label for="nA">Hasta</label><input type="time" id="nA"></div></div>' +
     '<div class="card" id="nRes"><p class="sub">No marques salida ni entrada por el permiso: el sistema descuenta esa franja de tu turno. Si no vuelves, marca salida.</p></div>' +
@@ -448,7 +471,7 @@ function leerArchivo(f) {
 function enviarNv(b, datos) {
   b.disabled = true; b.textContent = 'Enviando…'; msgNv('');
   llamar('mk_crearSolicitud', DEV, datos).then(function (r) {
-    NV.mias = r.mias;
+    NV.mias = r.mias; precargarNv(); // saldo y lista al día para la próxima
     $app.innerHTML = '<div class="centro"><div class="ok" style="background:var(--naranja)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h1 class="hola">Enviado</h1><p class="sub" style="margin-top:6px">' + esc(r.msg) + '</p></div>' +
       tablaMias() + '<div style="flex:1"></div><button class="btn b-bl b-peq" id="nListo">Volver</button>';
     q('nListo').onclick = function () { cargar(); };
