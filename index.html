@@ -77,6 +77,7 @@
   .est-PENDIENTE { color: var(--naranja); } .est-APROBADA { color: var(--verde); } .est-RECHAZADA { color: var(--rojo); }
   .ban { border-radius: 8px; padding: 9px 11px; font-size: 14px; } .ban.si { background: #e8f1ec; border: 1px solid #b9d8c4; color: #1f5a38; } .ban.no { background: #fdecea; border: 1px solid #f1b7b1; color: #8b241c; }
   .oculto { display: none !important; }
+  .ruta-prog { border-left: 5px solid var(--amarillo); } .ruta-prog .rp { font: 700 26px/1.1 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: .02em; }
 </style>
 </head>
 <body>
@@ -91,7 +92,7 @@
 var API = 'https://script.google.com/macros/s/AKfycbz0XnMR1yQgZJKFNJbvTFlaEJ8rAflT03hU5iVhbDBwgGWDr89cQmA4Xd78oc-rEwSp/exec';
 /* ↑↑↑ ---------------------------------------------------------- ↑↑↑ */
 var $app = document.getElementById('app');
-var E = null, POS = null, POS_ERR = '', T0 = Date.now(), timer = null, volver = null, pidiendoSalida = false, RUTA = '';
+var E = null, POS = null, POS_ERR = '', T0 = Date.now(), timer = null, volver = null, pidiendoSalida = false, RUTA = '', RUTA_OTRA = false;
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function q(id) { return document.getElementById(id); }
 
@@ -242,8 +243,15 @@ function principal() {
   }).join('') + aviso;
   var ruta = '';
   if (E.rutas && E.rutas.length && E.botones.indexOf('ENTRADA') >= 0) {
-    ruta = '<div><label for="fRuta">Ruta de hoy</label><select id="fRuta"><option value="">Escoge la ruta…</option>' +
-      E.rutas.map(function (x) { return '<option' + (x === RUTA ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '<option>OTRA / APOYO</option></select></div>';
+    var sel = '<select id="fRuta"><option value="">Escoge la ruta…</option>' +
+      E.rutas.map(function (x) { return '<option' + (x === RUTA ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>';
+    if (E.rutaProg && E.rutaProg.ruta) {
+      if (!RUTA_OTRA) RUTA = E.rutaProg.ruta;
+      ruta = '<div class="card ruta-prog"><p class="sub">Hoy estás programado en</p><div class="rp">' + esc(E.rutaProg.ruta) + '</div>' +
+        '<p class="sub">' + [E.rutaProg.hora ? 'Salida ' + esc(E.rutaProg.hora) : '', E.rutaProg.con ? 'con ' + esc(cap(E.rutaProg.con)) : ''].filter(String).join(' · ') + '</p>' +
+        (RUTA_OTRA ? '<div style="margin-top:8px"><label for="fRuta">¿En qué vas hoy?</label>' + sel + '</div><button class="enlace" id="bRutaProg" style="padding-left:0">Sí voy en ' + esc(E.rutaProg.ruta) + '</button>'
+          : '<button class="enlace" id="bRutaOtra" style="padding-left:0">No voy en esa ruta</button>') + '</div>';
+    } else ruta = '<div><label for="fRuta">Ruta de hoy</label>' + sel + '</div>';
   }
   var botones;
   if (pidiendoSalida) {
@@ -262,6 +270,8 @@ function principal() {
     '<button class="enlace" id="bMias">Mis novedades</button>' +
     (E.supervisor ? '<button class="enlace" id="bSup">Marcar por otra persona</button>' : '');
   if (q('fRuta')) q('fRuta').onchange = function () { RUTA = this.value; };
+  if (q('bRutaOtra')) q('bRutaOtra').onclick = function () { RUTA_OTRA = true; RUTA = ''; principal(); };
+  if (q('bRutaProg')) q('bRutaProg').onclick = function () { RUTA_OTRA = false; principal(); };
   Array.prototype.forEach.call($app.querySelectorAll('[data-a]'), function (b) { b.onclick = function () { accion(b.dataset.a, b); }; });
   if (q('bUbi')) q('bUbi').onclick = function () { this.disabled = true; this.textContent = 'Buscando…'; pedirUbicacion(principal); };
   if (q('bNo')) q('bNo').onclick = function () { pidiendoSalida = false; principal(); };
