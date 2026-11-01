@@ -290,17 +290,44 @@ function accion(a, b) {
   if (a === 'ENTRADA' && q('fRuta') && !q('fRuta').value) { q('mMsg').innerHTML = '<div class="alerta">Escoge la ruta de hoy.</div>'; return; }
   enviar(a, b);
 }
-function enviar(a, b) {
+function enviar(a, b, cena) {
   Array.prototype.forEach.call($app.querySelectorAll('button'), function (x) { x.disabled = true; });
   b.textContent = 'Registrando…';
   var go = function () {
-    llamar('mk_marcar', DEV, a, POS, RUTA).then(function (r) {
+    llamar('mk_marcar', DEV, a, POS, RUTA, cena || null).then(function (r) {
       if (r && r.error === 'UBICACION') { principal(); q('mMsg').innerHTML = '<div class="alerta">' + esc(r.msg) + '</div>'; return; }
+      if (r && r.error === 'CENA') return preguntaCena(r);
       mostrar(r);
-    }).catch(function (e) { principal(); q('mMsg').innerHTML = '<div class="alerta">' + esc(e.message) + '</div>'; });
+    }).catch(function (e) {
+      if (cena && cena.tomo === 'NO' && q('cFirma')) { Array.prototype.forEach.call($app.querySelectorAll('button'), function (x) { x.disabled = false; }); q('cEnviar').textContent = 'Firmar y marcar salida'; q('cMsg').innerHTML = '<div class="alerta">' + esc(e.message) + '</div>'; return; }
+      principal(); q('mMsg').innerHTML = '<div class="alerta">' + esc(e.message) + '</div>';
+    });
   };
   // ubicación fresca (máx. 1 minuto)
   if (!POS || Date.now() - POS.t > 180000) pedirUbicacion(go); else go();
+}
+/* ---- turno sin cena: lo decide y lo firma el trabajador ---- */
+function preguntaCena(r) {
+  clearInterval(timer);
+  $app.innerHTML = '<div><h1 class="hola">No registraste tu hora de cena</h1><p class="sub">Entraste ' + esc(r.fecha) + ' a las ' + esc(r.entrada) + ' y estás saliendo a las ' + esc(r.salida) + '</p></div>' +
+    '<div class="card"><p style="font-weight:600;margin:0 0 4px">¿Tomaste la hora de cena?</p><p class="sub" style="margin:0">Si la tomaste y se te olvidó marcarla, escoge "Sí": se descuenta como siempre.</p></div>' +
+    '<div style="flex:1"></div><button class="btn b-bl" id="cSi">Sí, la tomé</button><button class="btn b-os" id="cNo">No, trabajé sin cena</button><button class="enlace" id="cVolver">Volver</button>';
+  q('cSi').onclick = function () { enviar('SALIDA', this, { tomo: 'SI' }); };
+  q('cNo').onclick = function () { firmaCena(r); };
+  q('cVolver').onclick = function () { cargar(); };
+}
+function firmaCena(r) {
+  var nom = E && E.nombre ? cap(E.nombre) : '';
+  $app.innerHTML = '<div><h1 class="hola">Trabajé sin cena</h1></div>' +
+    '<div class="card"><p style="margin:0;line-height:1.45">Yo, <b>' + esc(nom) + '</b>, decidí <b>no tomar mi hora de cena</b> en el turno del ' + esc(r.fecha) + ' y continuar con mi jornada de trabajo.</p></div>' +
+    padFirma() + '<div id="cMsg"></div><div style="flex:1"></div><button class="btn b-os" id="cEnviar">Firmar y marcar salida</button><button class="enlace" id="cVolver">Volver</button>';
+  iniciarFirma();
+  q('cVolver').onclick = function () { preguntaCena(r); };
+  q('cEnviar').onclick = function () {
+    if (!FIRMA()) { q('cMsg').innerHTML = '<div class="alerta">Falta tu firma.</div>'; return; }
+    var f = FIRMA(), b = this; b.disabled = true; b.textContent = 'Registrando…';
+    enviar('SALIDA', b, { tomo: 'NO', firma: f });
+  };
 }
 function confirmacion(r) {
   var c = r.confirmacion;
@@ -543,8 +570,8 @@ function botSup() {
   });
 }
 
-document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && E && E.registrado && !E.confirmacion && !q('sPer') && !q('nEnviar') && !q('nListo')) cargar(); });
-pedirUbicacion(function () { if (E && E.registrado && !E.confirmacion && !q('nEnviar') && !q('sPer')) principal(); });
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && E && E.registrado && !E.confirmacion && !q('sPer') && !q('nEnviar') && !q('nListo') && !q('cSi') && !q('cEnviar')) cargar(); });
+pedirUbicacion(function () { if (E && E.registrado && !E.confirmacion && !q('nEnviar') && !q('sPer') && !q('cSi') && !q('cEnviar')) principal(); });
 if (API.indexOf('/exec') < 0) $app.innerHTML = '<div class="alerta">Falta pegar el link de la app en la línea var API de este archivo.</div>'; else cargar();
 </script>
 </body>
