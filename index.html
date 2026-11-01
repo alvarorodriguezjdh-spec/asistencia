@@ -80,6 +80,7 @@
   .adj img { width: 60px; height: 72px; object-fit: cover; border-radius: 4px; background: #e9ecef; }
   .est-PENDIENTE { color: var(--naranja); } .est-APROBADA { color: var(--verde); } .est-RECHAZADA { color: var(--rojo); }
   .ban { border-radius: 8px; padding: 9px 11px; font-size: 14px; } .ban.si { background: #e8f1ec; border: 1px solid #b9d8c4; color: #1f5a38; } .ban.no { background: #fdecea; border: 1px solid #f1b7b1; color: #8b241c; }
+  .ban.cp { background: #FFF4DE; border: 1px solid #f1d29a; color: #6b3d00; } .ban.cp .btn { margin-top: 8px; font-size: 16px; padding: 12px; }
   .oculto { display: none !important; }
   .ruta-prog { border-left: 4px solid var(--jdh); } .ruta-prog .rp { font: 700 26px/1.1 var(--fuente, 'Centrale Sans', system-ui, sans-serif); text-transform: uppercase; letter-spacing: .02em; color: var(--jdh); }
 </style>
@@ -245,6 +246,15 @@ function principal() {
     var f = x.desde === x.hasta ? 'del ' + fechaLarga(x.desde) : 'del ' + fechaLarga(x.desde) + ' al ' + fechaLarga(x.hasta);
     return '<div class="ban ' + (x.estado === 'APROBADA' ? 'si' : 'no') + '">' + (x.estado === 'APROBADA' ? '✓' : '✗') + ' Tu <b>' + esc(x.tipo === 'COMPENSATORIO' ? 'día compensatorio' : x.tipo.toLowerCase()) + ' ' + f + (x.franja ? ' (' + esc(x.franja.replace('-', '–')) + ')' : '') + '</b> fue <b>' + EST_AV[x.estado] + '</b> por ' + esc(cap(x.por || '')) + (x.nota ? ': "' + esc(x.nota) + '"' : '') + '.</div>';
   }).join('') + aviso;
+  // Compensatorios programados por el coordinador: firmar, recordatorio del día anterior y anulados
+  aviso = (E.compAvisos || []).map(function (x) {
+    var f = x.desde === x.hasta ? fechaLarga(x.desde) : fechaLarga(x.desde) + ' al ' + fechaLarga(x.hasta);
+    if (x.tipo === 'FIRMAR') return '<div class="ban cp"><b>Tienes un compensatorio pendiente por firmar</b><br>' + esc(f) + ' · ' + hm(Math.round((+x.horas || 0) * 60)) + ' h' + (x.manana ? ' · <b>es mañana</b>' : x.hoy ? ' · <b>es hoy</b>' : x.pasado ? '<br>Ya pasó el día: fírmalo para que quede completo.' : '') + '<button class="btn b-os" data-cpf="' + esc(x.id) + '">Ver y firmar</button></div>';
+    if (x.tipo === 'MANANA') return '<div class="ban si">📅 Recuerda: <b>mañana ' + esc(fechaLarga(x.desde)) + '</b> tienes día compensatorio. Ese día no tienes que venir.</div>';
+    if (x.tipo === 'HOY') return '<div class="ban si">Hoy es tu día compensatorio.</div>';
+    if (x.tipo === 'ANULADO') return '<div class="ban no">⚠ Tu compensatorio del <b>' + esc(f) + '</b> fue <b>anulado</b>' + (x.por ? ' por ' + esc(cap(x.por)) : '') + ': ese día trabajas normal.</div>';
+    return '';
+  }).join('') + aviso;
   var ruta = '';
   if (E.rutas && E.rutas.length && E.botones.indexOf('ENTRADA') >= 0) {
     var sel = '<select id="fRuta"><option value="">Escoge la ruta…</option>' +
@@ -281,6 +291,7 @@ function principal() {
   if (q('bNo')) q('bNo').onclick = function () { pidiendoSalida = false; principal(); };
   if (q('bSi')) q('bSi').onclick = function () { pidiendoSalida = false; enviar('SALIDA', this); };
   if (q('bSup')) q('bSup').onclick = supervisor;
+  Array.prototype.forEach.call($app.querySelectorAll('[data-cpf]'), function (b) { b.onclick = function () { firmarComp((E.compAvisos || []).filter(function (x) { return String(x.id) === b.dataset.cpf; })[0]); }; });
   Array.prototype.forEach.call($app.querySelectorAll('[data-nv]'), function (b) { b.onclick = function () { novedad(b.dataset.nv); }; });
   if (q('bMias')) q('bMias').onclick = function () { novedad('MIAS'); };
   tic(); clearInterval(timer); timer = setInterval(tic, 15000);
@@ -305,6 +316,25 @@ function enviar(a, b, cena) {
   };
   // ubicación fresca (máx. 1 minuto)
   if (!POS || Date.now() - POS.t > 180000) pedirUbicacion(go); else go();
+}
+/* ---- compensatorio programado por el coordinador: el trabajador lo firma ---- */
+function firmarComp(x) {
+  if (!x) return;
+  clearInterval(timer); $app.classList.remove('provisional');
+  var f = x.desde === x.hasta ? 'el <b>' + esc(fechaLarga(x.desde)) + '</b>' : 'del <b>' + esc(fechaLarga(x.desde)) + '</b> al <b>' + esc(fechaLarga(x.hasta)) + '</b>';
+  $app.innerHTML = '<div><h1 class="hola">Día compensatorio</h1></div>' +
+    '<div class="card"><p style="margin:0;line-height:1.45">Yo, <b>' + esc(cap(E.nombre)) + '</b>, tomo ' + f + ' (' + hm(Math.round((+x.horas || 0) * 60)) + ' h) como día compensatorio por horas extra trabajadas.</p>' + (x.por ? '<p class="sub" style="margin:6px 0 0">Programado por ' + esc(cap(x.por)) + '</p>' : '') + '</div>' +
+    padFirma() + '<div id="cMsg"></div><div style="flex:1"></div><button class="btn b-os" id="cpEnviar">Firmar</button><p class="mini">Al firmar queda aprobado.</p><button class="enlace" id="cpVolver">Volver</button>';
+  iniciarFirma();
+  q('cpVolver').onclick = function () { cargar(); };
+  q('cpEnviar').onclick = function () {
+    if (!FIRMA()) { q('cMsg').innerHTML = '<div class="alerta">Falta tu firma.</div>'; return; }
+    var b = this; b.disabled = true; b.textContent = 'Enviando…';
+    llamar('mk_firmarComp', DEV, x.id, FIRMA()).then(function (r) {
+      $app.innerHTML = '<div class="centro"><div class="ok"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div><h1 class="hola">Firmado</h1><p class="sub">' + esc(r.msg) + '</p></div><div style="flex:1"></div><button class="btn b-bl b-peq" id="cpListo">Listo</button>';
+      q('cpListo').onclick = function () { cargar(); };
+    }).catch(function (e) { b.disabled = false; b.textContent = 'Firmar'; q('cMsg').innerHTML = '<div class="alerta">' + esc(e.message) + '</div>'; });
+  };
 }
 /* ---- turno sin cena: lo decide y lo firma el trabajador ---- */
 function preguntaCena(r) {
@@ -570,8 +600,8 @@ function botSup() {
   });
 }
 
-document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && E && E.registrado && !E.confirmacion && !q('sPer') && !q('nEnviar') && !q('nListo') && !q('cSi') && !q('cEnviar')) cargar(); });
-pedirUbicacion(function () { if (E && E.registrado && !E.confirmacion && !q('nEnviar') && !q('sPer') && !q('cSi') && !q('cEnviar')) principal(); });
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && E && E.registrado && !E.confirmacion && !q('sPer') && !q('nEnviar') && !q('nListo') && !q('cSi') && !q('cEnviar') && !q('cpEnviar') && !q('cpListo')) cargar(); });
+pedirUbicacion(function () { if (E && E.registrado && !E.confirmacion && !q('nEnviar') && !q('sPer') && !q('cSi') && !q('cEnviar') && !q('cpEnviar') && !q('cpListo')) principal(); });
 if (API.indexOf('/exec') < 0) $app.innerHTML = '<div class="alerta">Falta pegar el link de la app en la línea var API de este archivo.</div>'; else cargar();
 </script>
 </body>
