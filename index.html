@@ -83,6 +83,27 @@
   .ban.cp { background: #FFF4DE; border: 1px solid #f1d29a; color: #6b3d00; } .ban.cp .btn { margin-top: 8px; font-size: 16px; padding: 12px; }
   .oculto { display: none !important; }
   .ruta-prog { border-left: 4px solid var(--jdh); } .ruta-prog .rp { font: 700 26px/1.1 var(--fuente, 'Centrale Sans', system-ui, sans-serif); text-transform: uppercase; letter-spacing: .02em; color: var(--jdh); }
+
+  /* Modo oscuro automático (sigue el modo del celular) · misma paleta "Azul noche con relieve" del panel */
+  @media (prefers-color-scheme: dark) {
+    :root { color-scheme: dark; --jdh: #FFFFFF; --jdh-osc: #1F4C85; --asfalto: #5B9BE6; --asfalto-2: #9DC3F0; --concreto: #0B1626; --papel: #12223A; --linea: #22395A; --borde-campo: #2E4A70;
+      --texto: #D7E1EE; --tenue: #8FA3BC; --amarillo: #F5B95A; --rojo: #FF8C82; --verde: #5ED69A; --naranja: #F5B95A; }
+    .top { background: #081120; border-bottom: 1px solid #1A2A40; }
+    .b-am { background: #5B9BE6; color: #06121F; } .b-os { background: #1F4C85; color: #fff; }
+    .b-bl, .op, .op i, .step, .seg button, .adj, input, select, textarea { background: #12223A !important; color: #D7E1EE; border-color: #2E4A70; }
+    .op i { color: #5B9BE6 !important; border-color: #5B9BE6 !important; } .op:hover { border-color: #5B9BE6; }
+    .step button { background: #18304E; color: #D7E1EE; }
+    .seg button.on { background: #5B9BE6 !important; color: #06121F; }
+    .btn[disabled] { background: #1A2E4A !important; color: #5E7290 !important; border-color: #1A2E4A !important; }
+    .alerta, .ban.no { background: #40211F; border-color: #6A322C; color: #FF8C82; }
+    .aviso, .ban.cp { background: #3A2E14; border-color: #5A4520; color: #F7CD7A; }
+    .ban.si { background: #15382A; border-color: #2B5A41; color: #5ED69A; }
+    .ruta-prog { border-left-color: #5B9BE6; }
+    .barra { background: #1A2E4A; } .spin { border-color: #22395A; border-top-color: #5B9BE6; }
+    .ok { background: #2F8F5E; }
+    .firma { background: #fff; } /* la firma se dibuja sobre blanco, como en papel */
+    .firma .pie, .firma .pie button { color: #5B6472; }
+  }
 </style>
 </head>
 <body>
