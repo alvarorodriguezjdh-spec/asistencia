@@ -4,59 +4,63 @@
 <meta charset="utf-8">
 <title>Registro de asistencia</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#23272B">
-<link rel="icon" id="favicon" href="data:,">
+<meta name="theme-color" content="#16304E">
+<link rel="icon" id="favicon" href="https://alvarorodriguezjdh-spec.github.io/jdh-marca/favicon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://alvarorodriguezjdh-spec.github.io/jdh-marca/jdh.css">
 <style>
   :root {
-    --asfalto: #23272B; --asfalto-2: #3A4046; --concreto: #ECEEEC; --papel: #FFFFFF; --linea: #D6DAD6;
-    --texto: #23272B; --tenue: #5F676E; --amarillo: #F2B705; --rojo: #C8372D; --verde: #2E7D4F; --naranja: #C46A12;
+    /* Identidad visual JDH · fuente y variables base en jdh.css */
+    --jdh: #16304E; --jdh-osc: #0B1B2E;
+    --asfalto: #16304E; --asfalto-2: #0B1B2E; --concreto: #F4F5F7; --papel: #FFFFFF; --linea: #E1E5EB; --borde-campo: #CDD3DC;
+    --texto: #1D1D1B; --tenue: #5B6472; --amarillo: #D08A1E; --rojo: #A8281C; --verde: #1E6B44; --naranja: #8A4B00;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: var(--concreto); color: var(--texto); font: 16px/1.4 'Barlow', system-ui, sans-serif; min-height: 100%; }
+  html, body { margin: 0; background: var(--concreto); color: var(--texto); font: 16px/1.4 var(--fuente, 'Centrale Sans', system-ui, sans-serif); min-height: 100%; }
   button, select, input { font: inherit; color: inherit; }
-  .top { background: var(--asfalto); color: #fff; padding: 12px 16px 10px; border-bottom: 4px solid var(--amarillo); display: flex; align-items: center; gap: 10px; }
-  .top img { height: 28px; width: auto; border-radius: 4px; background: #fff; padding: 2px; }
-  .top .m { font: 700 16px 'Barlow Condensed', sans-serif; letter-spacing: .05em; flex: 1; }
-  .top .r { font-size: 13px; color: #c9cdd1; }
+  .top { background: var(--jdh); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 12px; position: relative; overflow: hidden; }
+  .top::after { content: ''; position: absolute; width: 130px; height: 130px; right: -40px; top: -70px; border: 1.5px solid rgba(255,255,255,.15); transform: rotate(45deg); pointer-events: none; }
+  .top img { height: 30px; width: auto; }
+  .top .m { font: 700 15px var(--fuente, 'Centrale Sans', system-ui, sans-serif); flex: 1; color: #fff; padding-left: 12px; border-left: 1px solid rgba(255,255,255,.35); line-height: 1.2; }
+  .top .r { font-size: 13px; color: #C9D3E0; position: relative; z-index: 1; }
   main { max-width: 460px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: calc(100vh - 56px); min-height: calc(100dvh - 56px); }
-  .hola { font: 600 26px/1.1 'Barlow Condensed', sans-serif; margin: 0; }
+  .hola { font: 700 26px/1.1 var(--fuente, 'Centrale Sans', system-ui, sans-serif); margin: 0; color: var(--jdh); }
   .sub { color: var(--tenue); font-size: 14px; margin: 0; }
-  .card { background: var(--papel); border: 1px solid var(--linea); border-radius: 10px; padding: 10px 12px; }
+  .card { background: var(--papel); border: 1px solid var(--linea); border-radius: 16px; padding: 12px 14px; }
   .estado { border-left: 5px solid var(--tenue); }
-  .estado .e { font: 700 20px 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: .03em; }
+  .estado .e { font: 700 20px var(--fuente, 'Centrale Sans', system-ui, sans-serif); text-transform: uppercase; letter-spacing: .03em; }
   .estado.trab { border-left-color: var(--verde); } .estado.trab .e { color: var(--verde); }
   .estado.desc { border-left-color: var(--naranja); } .estado.desc .e { color: var(--naranja); }
   .ubi { display: flex; gap: 10px; align-items: center; font-size: 14px; }
-  .pt { width: 11px; height: 11px; border-radius: 50%; flex: none; background: #b8bdb8; }
+  .pt { width: 10px; height: 10px; flex: none; background: #AEB6C2; transform: rotate(45deg); margin: 0 2px; }
   .pt.si { background: var(--verde); } .pt.lejos { background: var(--rojo); } .pt.libre { background: var(--amarillo); }
   .reloj { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 110px; }
-  .reloj b { font: 700 54px/1 'Barlow Condensed', sans-serif; }
-  .btn { border: 0; border-radius: 12px; padding: 18px 10px; font: 700 24px 'Barlow Condensed', sans-serif; letter-spacing: .06em; text-transform: uppercase; width: 100%; cursor: pointer; }
+  .reloj b { font: 700 54px/1 var(--fuente, 'Centrale Sans', system-ui, sans-serif); color: var(--jdh); }
+  .btn { border: 0; border-radius: 14px; padding: 16px 10px; min-height: 56px; font: 700 19px var(--fuente, 'Centrale Sans', system-ui, sans-serif); letter-spacing: .08em; text-transform: uppercase; width: 100%; cursor: pointer; }
   .btn:active { transform: scale(.99); }
   .btn[disabled] { background: #c9ccc9 !important; color: #7b8288 !important; border-color: #c9ccc9 !important; cursor: default; }
-  .b-am { background: var(--amarillo); color: var(--asfalto); }
-  .b-os { background: var(--asfalto); color: #fff; }
-  .b-bl { background: #fff; color: var(--asfalto); border: 2px solid var(--asfalto); }
+  .b-am { background: var(--jdh); color: #fff; }
+  .b-os { background: var(--jdh-osc); color: #fff; }
+  .b-bl { background: #fff; color: var(--jdh); border: 1.5px solid var(--borde-campo); }
   .b-peq { font-size: 17px; padding: 12px; }
   .enlace { background: none; border: 0; color: var(--asfalto-2); text-decoration: underline; font-size: 14px; padding: 8px; cursor: pointer; }
   .mini { font-size: 13px; color: var(--tenue); text-align: center; margin: 0; }
   label { display: block; font-size: 13px; color: var(--tenue); margin-bottom: 4px; }
-  input, select { width: 100%; background: #fff; border: 1px solid var(--linea); border-radius: 8px; padding: 13px 12px; font-size: 18px; }
-  input:focus, select:focus { outline: 3px solid var(--amarillo); outline-offset: 1px; }
-  .alerta { background: #fdecea; border: 1px solid #f1b7b1; color: #8b241c; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
-  .aviso { background: #fff6cc; border: 1px solid #f0d36a; color: #5b4a00; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  input, select { width: 100%; background: #fff; border: 1px solid var(--borde-campo); border-radius: 12px; padding: 13px 12px; min-height: 50px; font-size: 18px; }
+  input:focus, select:focus { outline: 3px solid #8FA7C4; outline-offset: 1px; }
+  .alerta { background: #FDECEA; border: 1px solid #F1B7B1; color: #A8281C; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  .aviso { background: #FFF4DE; border: 1px solid #F1D9A8; color: #8A4B00; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
   .barra { height: 8px; background: #dfe2df; border-radius: 4px; overflow: hidden; margin-top: 6px; } .barra i { display: block; height: 100%; background: var(--naranja); }
   .ok { width: 86px; height: 86px; border-radius: 50%; background: var(--verde); color: #fff; display: grid; place-items: center; margin: 20px auto 4px; }
   .res { width: 100%; border-collapse: collapse; } .res td { padding: 5px 0; font-size: 15px; } .res td:last-child { text-align: right; font-weight: 600; }
   .centro { text-align: center; }
-  .spin { width: 34px; height: 34px; border: 4px solid #cfd3cf; border-top-color: var(--asfalto); border-radius: 50%; animation: g 1s linear infinite; margin: 40px auto 10px; }
+  .spin { width: 34px; height: 34px; border: 4px solid #D9DEE6; border-top-color: var(--jdh); border-radius: 50%; animation: g 1s linear infinite; margin: 40px auto 10px; }
   @keyframes g { to { transform: rotate(360deg); } }
   .confirmar { display: flex; gap: 10px; } .confirmar .btn { font-size: 20px; }
-  .op { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--linea); border-radius: 10px; padding: 12px; font-weight: 600; font-size: 16px; text-align: left; width: 100%; cursor: pointer; }
-  .op i { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-style: normal; font-size: 18px; flex: none; }
+  .op { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--linea); border-radius: 16px; padding: 12px 14px; min-height: 56px; font-weight: 500; font-size: 16px; color: var(--texto); text-align: left; width: 100%; cursor: pointer; }
+  .op:hover { border-color: var(--jdh); }
+  .op i { width: 30px; height: 30px; margin: 5px; border: 1.5px solid var(--jdh); background: #fff !important; color: var(--jdh) !important; transform: rotate(45deg); display: grid; place-items: center; font-style: normal; font-size: 15px; flex: none; }
+  .op i > b { transform: rotate(-45deg); font-weight: 700; }
   .op small { display: block; font-weight: 400; color: var(--tenue); font-size: 12px; }
   .firma { position: relative; background: #fff; border: 1px dashed #9aa19a; border-radius: 8px; height: 150px; touch-action: none; }
   .firma canvas { width: 100%; height: 100%; display: block; touch-action: none; }
@@ -68,22 +72,22 @@
   input::-webkit-date-and-time-value { text-align: left; margin: 0; }
   .step { min-width: 0; } .step b { min-width: 0; }
   .provisional .btn { opacity: .55; pointer-events: none; }
-  .step { display: flex; align-items: center; border: 1px solid var(--linea); border-radius: 8px; background: #fff; overflow: hidden; }
+  .step { display: flex; align-items: center; border: 1px solid var(--borde-campo); border-radius: 12px; background: #fff; overflow: hidden; min-height: 50px; }
   .step b { flex: 1; text-align: center; font-size: 20px; } .step button { width: 46px; font-size: 22px; padding: 9px 0; background: #f2f3f2; border: 0; }
-  .seg { display: flex; border: 1px solid var(--linea); border-radius: 8px; overflow: hidden; } .seg button { flex: 1; border: 0; background: #fff; padding: 11px; font-size: 15px; }
+  .seg { display: flex; border: 1px solid var(--borde-campo); border-radius: 12px; overflow: hidden; } .seg button { flex: 1; border: 0; background: #fff; padding: 12px; min-height: 48px; font-size: 15px; color: var(--jdh); }
   .seg button.on { background: var(--asfalto); color: #fff; }
   .adj { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--linea); border-radius: 8px; padding: 8px; }
   .adj img { width: 60px; height: 72px; object-fit: cover; border-radius: 4px; background: #e9ecef; }
   .est-PENDIENTE { color: var(--naranja); } .est-APROBADA { color: var(--verde); } .est-RECHAZADA { color: var(--rojo); }
   .ban { border-radius: 8px; padding: 9px 11px; font-size: 14px; } .ban.si { background: #e8f1ec; border: 1px solid #b9d8c4; color: #1f5a38; } .ban.no { background: #fdecea; border: 1px solid #f1b7b1; color: #8b241c; }
   .oculto { display: none !important; }
-  .ruta-prog { border-left: 5px solid var(--amarillo); } .ruta-prog .rp { font: 700 26px/1.1 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+  .ruta-prog { border-left: 4px solid var(--jdh); } .ruta-prog .rp { font: 700 26px/1.1 var(--fuente, 'Centrale Sans', system-ui, sans-serif); text-transform: uppercase; letter-spacing: .02em; color: var(--jdh); }
 </style>
 </head>
 <body>
 <div class="top">
-  <img id="logo" alt="" hidden>
-  <span class="m">REGISTRO DE ASISTENCIA</span><span class="r" id="tFecha"></span>
+  <img id="logo" src="https://alvarorodriguezjdh-spec.github.io/jdh-marca/logo-blanco.png" alt="JDH">
+  <span class="m">Registro de asistencia</span><span class="r" id="tFecha"></span>
 </div>
 <main id="app"><div class="spin"></div><p class="mini">Cargando…</p></main>
 
@@ -263,10 +267,10 @@ function principal() {
   $app.innerHTML = cab + tarjeta + ubi + aviso + ruta +
     '<div class="reloj"><b id="rH"></b><span class="sub" id="rAp"></span></div><div id="mMsg"></div>' + botones +
     '<p class="sub centro" style="margin-top:8px">Registrar novedad</p>' +
-    '<button class="op" data-nv="COMPENSATORIO"><i style="background:#e8f1ec;color:var(--verde)">↺</i><span>Día compensatorio<small>Con tu firma</small></span></button>' +
-    '<button class="op" data-nv="INCAPACIDAD"><i style="background:#fdecea;color:var(--rojo)">✚</i><span>Incapacidad<small>Adjunta la foto</small></span></button>' +
-    '<button class="op" data-nv="PERMISO"><i style="background:#eef2f7;color:#2F5D8A">✎</i><span>Permiso<small>Horas o día completo</small></span></button>' +
-    '<button class="op" data-nv="VACACIONES"><i style="background:#fff6cc;color:#8a6a00">☀</i><span>Vacaciones<small>Solicitud con tu firma</small></span></button>' +
+    '<button class="op" data-nv="COMPENSATORIO"><i><b><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg></b></i><span>Día compensatorio<small>Con tu firma</small></span></button>' +
+    '<button class="op" data-nv="INCAPACIDAD"><i><b><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></b></i><span>Incapacidad<small>Adjunta la foto</small></span></button>' +
+    '<button class="op" data-nv="PERMISO"><i><b><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></b></i><span>Permiso<small>Horas o día completo</small></span></button>' +
+    '<button class="op" data-nv="VACACIONES"><i><b><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></b></i><span>Vacaciones<small>Solicitud con tu firma</small></span></button>' +
     '<button class="enlace" id="bMias">Mis novedades</button>' +
     (E.supervisor ? '<button class="enlace" id="bSup">Marcar por otra persona</button>' : '');
   if (q('fRuta')) q('fRuta').onchange = function () { RUTA = this.value; };
@@ -343,7 +347,7 @@ function iniciarFirma() {
 function nvComp() {
   $app.innerHTML = cabNv('Día compensatorio') +
     '<div><label for="nF">¿Qué día descansas?</label><input type="date" id="nF" min="' + NV.comp.min + '" max="' + NV.comp.max + '"></div>' +
-    '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="sub">Horas de tu jornada ese día</span><b id="nH" style="font:700 24px \'Barlow Condensed\',sans-serif">—</b></div>' +
+    '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="sub">Horas de tu jornada ese día</span><b id="nH" style="font:700 24px var(--fuente,sans-serif)">—</b></div>' +
     padFirma() + '<p class="mini" style="text-align:left">Al firmar confirmas que tomas este día como compensatorio por horas extra trabajadas.</p>' + pieNv('Firmar y enviar');
   iniciarFirma();
   q('nF').onchange = function () { var j = NV.jornadas[this.value]; q('nH').textContent = !this.value ? '—' : j ? hm(j) + ' h' : 'Sin jornada'; msgNv(this.value && !j ? 'Ese día no tienes jornada (domingo, festivo o día sin horario).' : ''); };
@@ -419,7 +423,7 @@ function numCo(x) { return (Math.round(x * 10) / 10).toString().replace('.', ','
 function nvVac() {
   var v = NV.vac;
   $app.innerHTML = cabNv('Vacaciones') +
-    '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="sub">Días disponibles hoy</span><b style="font:700 28px \'Barlow Condensed\',sans-serif">' + (v ? numCo(v.saldo) : '—') + '</b></div>' +
+    '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="sub">Días disponibles hoy</span><b style="font:700 28px var(--fuente,sans-serif)">' + (v ? numCo(v.saldo) : '—') + '</b></div>' +
     (v ? '' : '<div class="aviso">Tu saldo todavía no está cargado. Igual puedes enviar la solicitud.</div>') +
     '<div><label for="nD">Desde</label><input type="date" id="nD" min="' + NV.vacRango.min + '" max="' + NV.vacRango.max + '"></div>' +
     '<div class="fila2"><div><label for="nN">¿Cuántos días?</label><input type="number" id="nN" min="1" max="60" inputmode="numeric" placeholder="Ej. 15"></div>' +
